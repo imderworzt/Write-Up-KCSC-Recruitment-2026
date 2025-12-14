@@ -26,8 +26,56 @@ Nhìn lại v9, ta thấy trước đó v9 đi qua một hàm là hàm sub_14000
 
 Từ đầy ta viết chương trình này:
 
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/129c620c-6302-47a7-a33b-b61527a708c5" />
- 
+"""
+import idc
+import ida_bytes
+
+# 1. Chuẩn bị dữ liệu đích (Target Hash)
+target_hash = 0xD427202CB4B2
+base = 1337
+
+# Giải mã target_hash ra hệ số cơ số 1337
+target_coeffs = {} 
+current_power = 0
+temp_hash = target_hash
+
+while temp_hash > 0:
+    val = temp_hash % base
+    target_coeffs[current_power] = val
+    temp_hash //= base
+    current_power += 1
+
+# 2. Duyệt Static Linked List để lấy Static Values
+head_addr = 0x1400040A8 
+current_node = idc.get_qword(head_addr)
+
+final_inputs = []
+
+print("\n--- Calculating Inputs ---")
+while current_node != 0:
+    # Lấy thông tin từ Static Node
+    static_val = idc.get_wide_byte(current_node + 8) # Offset 8 là giá trị
+    power = idc.get_wide_byte(current_node + 9)      # Offset 9 là số mũ
+    
+    # Lấy giá trị đích mong muốn cho số mũ này
+    target_val = target_coeffs.get(power, 0)
+    
+    # Tính Input cần thiết: Input = (Target - Static) % 256
+    needed_input = (target_val - static_val) & 0xFF
+    
+    print(f"Node at {hex(current_node)}: Power={power}, Static={static_val}, Target={target_val} -> Needed Input={needed_input}")
+    
+    final_inputs.append(str(needed_input))
+    
+    # Next node
+    current_node = idc.get_qword(current_node + 10)
+
+print("\n" + "="*30)
+print("INPUT CẦN NHẬP:")
+print(" ".join(final_inputs))
+print("="*30)
+"""
+
 
 Ở cửa sổ IDA, chọn File -> Script commands rồi làm và lấy output như trong hình này:
 
